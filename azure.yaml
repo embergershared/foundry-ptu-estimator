@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: foundry-tpu-est-data
+metadata:
+  template: foundry-tpu-est-data@0.1.0
+services:
+  worker:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+    resourceName: ${AZURE_CONTAINER_APP_JOB_NAME}

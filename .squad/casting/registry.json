@@ -1,0 +1,44 @@
+{
+  "agents": {
+    "lead": {
+      "role": "lead",
+      "displayName": "Lead",
+      "charter": ".squad/agents/lead/charter.md",
+      "history": ".squad/agents/lead/history.md",
+      "status": "active",
+      "hiredAt": "2026-05-14"
+    },
+    "backend": {
+      "role": "backend",
+      "displayName": "Backend",
+      "charter": ".squad/agents/backend/charter.md",
+      "history": ".squad/agents/backend/history.md",
+      "status": "active",
+      "hiredAt": "2026-05-14"
+    },
+    "devops": {
+      "role": "devops",
+      "displayName": "DevOps",
+      "charter": ".squad/agents/devops/charter.md",
+      "history": ".squad/agents/devops/history.md",
+      "status": "active",
+      "hiredAt": "2026-05-14"
+    },
+    "data": {
+      "role": "data",
+      "displayName": "Data",
+      "charter": ".squad/agents/data/charter.md",
+      "history": ".squad/agents/data/history.md",
+      "status": "active",
+      "hiredAt": "2026-05-14"
+    },
+    "tester": {
+      "role": "tester",
+      "displayName": "Tester",
+      "charter": ".squad/agents/tester/charter.md",
+      "history": ".squad/agents/tester/history.md",
+      "status": "active",
+      "hiredAt": "2026-05-14"
+    }
+  }
+}

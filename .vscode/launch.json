@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug local",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tpu_est",
+      "args": ["run-once"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "externalTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Load test (loop every 10s, .env)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/loop_run_once.py",
+      "args": ["--interval", "10", "--iterations", "0"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "MAX_JITTER_SECONDS": "0",
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Run once (smoke — bogus endpoint, no network call success)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "tpu_est",
+      "args": ["run-once"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "FOUNDRY_ENDPOINT": "https://example-bogus.services.ai.azure.com/models",
+        "MODEL_DEPLOYMENT": "gpt-5.4",
+        "MIN_TOKENS": "1000",
+        "MAX_TOKENS": "2000",
+        "MAX_JITTER_SECONDS": "0",
+        "LOG_LEVEL": "DEBUG"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Pytest: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-v", "${file}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}

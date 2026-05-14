@@ -1,0 +1,82 @@
+# Required before running:
+# - Repository secrets:
+#   - AZURE_CLIENT_ID: service principal client ID configured for federated identity from this repo
+#   - AZURE_TENANT_ID: Azure tenant ID
+#   - AZURE_SUBSCRIPTION_ID: Azure subscription ID
+# - Repository variables:
+#   - AZURE_ENV_NAME: azd environment name (for example, prod)
+#   - AZURE_LOCATION: Azure region (for example, swedencentral)
+#   - FOUNDRY_RESOURCE_GROUP_NAME: resource group that contains the existing Foundry account
+#   - FOUNDRY_ACCOUNT_NAME: existing Foundry account name
+#   - FOUNDRY_ENDPOINT: full inference endpoint URL
+#   - MODEL_DEPLOYMENT: optional; defaults to gpt-5.4 via infra/main.parameters.json
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      azd_environment:
+        description: azd environment name to deploy
+        required: false
+        default: prod
+        type: string
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.azd_environment || vars.AZURE_ENV_NAME }}
+    env:
+      AZURE_CORE_OUTPUT: none
+      AZD_ENVIRONMENT: ${{ inputs.azd_environment || vars.AZURE_ENV_NAME }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install azd
+        uses: Azure/setup-azd@v2
+
+      - name: Azure login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: azd login (OIDC)
+        run: |
+          azd auth login --client-id "${{ secrets.AZURE_CLIENT_ID }}" \
+                         --federated-credential-provider github \
+                         --tenant-id "${{ secrets.AZURE_TENANT_ID }}"
+
+      - name: Select azd environment
+        run: |
+          azd env new "$AZD_ENVIRONMENT" \
+            --location "${{ vars.AZURE_LOCATION }}" \
+            --subscription "${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            --no-prompt 2>/dev/null || azd env select "$AZD_ENVIRONMENT"
+
+      - name: Configure azd env vars
+        run: |
+          azd env set FOUNDRY_RESOURCE_GROUP_NAME "${{ vars.FOUNDRY_RESOURCE_GROUP_NAME }}"
+          azd env set FOUNDRY_ACCOUNT_NAME "${{ vars.FOUNDRY_ACCOUNT_NAME }}"
+          azd env set FOUNDRY_ENDPOINT "${{ vars.FOUNDRY_ENDPOINT }}"
+          if [ -n "${{ vars.MODEL_DEPLOYMENT }}" ]; then azd env set MODEL_DEPLOYMENT "${{ vars.MODEL_DEPLOYMENT }}"; fi
+
+      - name: azd provision
+        run: azd provision --no-prompt
+
+      - name: azd deploy
+        run: azd deploy --no-prompt
