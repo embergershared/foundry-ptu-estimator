@@ -13,6 +13,9 @@ This file records the non-secret Azure deployment details for the `tpu-est-dep` 
 | Existing Foundry resource group | `rg-swc-s3-ai-msfoundry-demo-02` |
 | Model deployment | `gpt-5.4` |
 | Foundry endpoint | `https://zava-shopping-agent-resource.openai.azure.com/openai/v1` |
+| GitHub OIDC app registration | `github-foundry-tpu-estimator-tpu-est-dep` |
+| GitHub OIDC client ID | `b6123d3c-fad8-413a-8a33-81b1391499ec` |
+| Tenant ID | `c4c9004b-43cc-4303-bfbf-0a5f7e1d0139` |
 
 ## Portal links
 
@@ -65,8 +68,27 @@ This file records the non-secret Azure deployment details for the `tpu-est-dep` 
 - The Container Apps Job uses user-assigned managed identity `id-tpu-est-dep`.
 - `id-tpu-est-dep` has `AcrPull` on `crl774tzpe76sw6`.
 - `id-tpu-est-dep` has `Cognitive Services User` on `zava-shopping-agent-resource`.
+- GitHub Actions OIDC uses app registration `github-foundry-tpu-estimator-tpu-est-dep`.
+- The OIDC federated credential subject is `repo:embergershared/foundry-tpu-estimator:environment:tpu-est-dep`.
 - Foundry diagnostic setting `foundry-tpu-est-diag` sends `allLogs`, `audit`, and `AllMetrics` to:
   - Log Analytics workspace `log-tpu-est-dep`
   - Storage account `stl774tzpe76sw6`
+
+## GitHub repository configuration still needed
+
+GitHub CLI is not installed in this environment, so repository secrets and variables were not set automatically.
+Configure these in GitHub before running the deploy workflow:
+
+| Type | Name | Value |
+|---|---|---|
+| Secret | `AZURE_CLIENT_ID` | `b6123d3c-fad8-413a-8a33-81b1391499ec` |
+| Secret | `AZURE_TENANT_ID` | `c4c9004b-43cc-4303-bfbf-0a5f7e1d0139` |
+| Secret | `AZURE_SUBSCRIPTION_ID` | `4c88693f-5cc9-4f30-9d1e-d58d4221cf25` |
+| Variable | `AZURE_ENV_NAME` | `tpu-est-dep` |
+| Variable | `AZURE_LOCATION` | `swedencentral` |
+| Variable | `FOUNDRY_RESOURCE_GROUP_NAME` | `rg-swc-s3-ai-msfoundry-demo-02` |
+| Variable | `FOUNDRY_ACCOUNT_NAME` | `zava-shopping-agent-resource` |
+| Variable | `FOUNDRY_ENDPOINT` | `https://zava-shopping-agent-resource.openai.azure.com/openai/v1` |
+| Variable | `MODEL_DEPLOYMENT` | `gpt-5.4` |
 
 No secrets are recorded in this file.
