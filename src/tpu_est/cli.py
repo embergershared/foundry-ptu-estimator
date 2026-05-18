@@ -8,6 +8,7 @@ from typing import Final
 
 import structlog
 import tiktoken
+from azure.core.exceptions import ClientAuthenticationError
 from azure.identity import DefaultAzureCredential
 
 from tpu_est.client import FoundryClient
@@ -22,6 +23,12 @@ _SYSTEM_PROMPT: Final[str] = (
 _SUCCESS_EXIT_CODE: Final[int] = 0
 _HANDLED_FAILURE_EXIT_CODE: Final[int] = 1
 _CONFIG_ERROR_EXIT_CODE: Final[int] = 2
+_LOCAL_AUTH_HELP: Final[str] = (
+    "Azure authentication failed. For local runs, refresh your Azure CLI session with "
+    "`az logout` then `az login --tenant <tenant-id> --scope "
+    "https://cognitiveservices.azure.com/.default`, and leave AZURE_CLIENT_ID unset. "
+    "AZURE_CLIENT_ID is only for the Container Apps Job managed identity."
+)
 
 
 def run_once(config: AppConfig) -> int:
@@ -79,6 +86,14 @@ def run_once(config: AppConfig) -> int:
     except ConfigError as error:
         structlog.get_logger().error("config_error", exc_message=str(error))
         return _CONFIG_ERROR_EXIT_CODE
+    except ClientAuthenticationError as error:
+        structlog.get_logger().error(
+            "azure_auth_failed",
+            exc_type=type(error).__name__,
+            exc_message=str(error),
+            remediation=_LOCAL_AUTH_HELP,
+        )
+        return _HANDLED_FAILURE_EXIT_CODE
     except Exception as error:
         structlog.get_logger().exception(
             "run_failed",

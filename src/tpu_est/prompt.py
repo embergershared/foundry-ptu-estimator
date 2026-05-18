@@ -41,7 +41,8 @@ def build_prompt(
     if target_tokens <= 0:
         raise ValueError(f"target_tokens must be positive, got {target_tokens}")
 
-    tokens = corpus.tokens()
+    window = target_tokens + _OVERSAMPLE_MARGIN
+    tokens = corpus.tokens(min_count=window)
     capacity = len(tokens) - _OVERSAMPLE_MARGIN
     if target_tokens > capacity:
         raise ValueError(
@@ -49,7 +50,6 @@ def build_prompt(
             f"add more titles or lower the upper bound."
         )
 
-    window = target_tokens + _OVERSAMPLE_MARGIN
     start = rng.randint(0, len(tokens) - window)
     raw_slice = corpus.encoder.decode(tokens[start : start + window])
     re_encoded = corpus.encoder.encode(raw_slice)[:target_tokens]

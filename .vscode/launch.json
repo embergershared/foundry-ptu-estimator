@@ -9,7 +9,7 @@
       "args": ["run-once"],
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
-      "console": "externalTerminal",
+      "console": "integratedTerminal",
       "justMyCode": false
     },
     {

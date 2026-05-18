@@ -52,6 +52,7 @@ class Corpus:
         self._encoder = encoder
         self._tokens: list[int] | None = None
         self._slugs: tuple[str, ...] | None = None
+        self._is_complete = False
 
     @property
     def encoder(self) -> Encoding:
@@ -61,16 +62,25 @@ class Corpus:
     @property
     def slugs(self) -> tuple[str, ...]:
         """Slugs of every bundled title, in sorted order."""
-        if self._slugs is None:
-            self._build()
+        if self._slugs is None or not self._is_complete:
+            self._build(min_count=None)
         assert self._slugs is not None
         return self._slugs
 
-    def tokens(self) -> list[int]:
-        """The concatenated token stream across every bundled title."""
-        if self._tokens is None:
-            self._build()
+    def tokens(self, *, min_count: int | None = None) -> list[int]:
+        """The concatenated token stream across every bundled title.
+
+        When `min_count` is supplied, tokenization stops once at least that
+        many tokens are available. A later unbounded call still builds the
+        complete corpus.
+        """
+        if min_count is not None and min_count <= 0:
+            raise ValueError(f"min_count must be positive, got {min_count}")
+        if self._tokens is None or (min_count is None and not self._is_complete):
+            self._build(min_count=min_count)
         assert self._tokens is not None
+        if min_count is not None and len(self._tokens) < min_count:
+            self._build(min_count=min_count)
         return self._tokens
 
     @property
@@ -78,13 +88,18 @@ class Corpus:
         """Total number of tokens across every bundled title."""
         return len(self.tokens())
 
-    def _build(self) -> None:
+    def _build(self, *, min_count: int | None = None) -> None:
         slugs: list[str] = []
         token_stream: list[int] = []
+        is_complete = True
         for entry in iter_entries():
             slugs.append(entry.slug)
             token_stream.extend(self._encoder.encode(entry.text))
+            if min_count is not None and len(token_stream) >= min_count:
+                is_complete = False
+                break
         if not slugs:
             raise RuntimeError(f"No corpus files found in package '{_CORPUS_PACKAGE}'.")
         self._slugs = tuple(slugs)
         self._tokens = token_stream
+        self._is_complete = is_complete

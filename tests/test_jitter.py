@@ -6,6 +6,7 @@ import random
 from dataclasses import dataclass
 from unittest.mock import Mock
 
+from azure.core.exceptions import ClientAuthenticationError
 from pytest_mock import MockerFixture
 
 from tpu_est.cli import run_once
@@ -113,3 +114,24 @@ def test_run_once_returns_1_on_client_failure(mocker: MockerFixture) -> None:
     exit_code = run_once(config)
 
     assert exit_code == _HANDLED_FAILURE_EXIT_CODE
+
+
+def test_run_once_logs_actionable_auth_failure(mocker: MockerFixture) -> None:
+    """run_once emits local Azure auth remediation without a traceback log."""
+    config = _app_config(max_jitter_seconds=_MIN_JITTER_SECONDS)
+    _patch_cli_dependencies(
+        mocker,
+        client_result=ClientAuthenticationError(message="reauthentication required"),
+    )
+    logger = mocker.patch("tpu_est.cli.structlog.get_logger").return_value
+
+    exit_code = run_once(config)
+
+    assert exit_code == _HANDLED_FAILURE_EXIT_CODE
+    logger.error.assert_called_once()
+    log_kwargs = logger.error.call_args.kwargs
+    assert logger.error.call_args.args == ("azure_auth_failed",)
+    assert log_kwargs["exc_type"] == "ClientAuthenticationError"
+    assert log_kwargs["exc_message"] == "reauthentication required"
+    assert "az login" in log_kwargs["remediation"]
+    logger.exception.assert_not_called()

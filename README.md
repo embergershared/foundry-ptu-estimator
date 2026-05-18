@@ -153,8 +153,9 @@ Three idiomatic options — pick whichever fits your loop:
 
 1. **`.env` file (recommended for VS Code)**
    - Copy the template: `Copy-Item .env.example .env` (or `cp .env.example .env`).
-     `.env` is gitignored; `.env.example` is the only `.env*` allowed in git.
-   - Fill in `FOUNDRY_ENDPOINT`, `MODEL_DEPLOYMENT`, and `AZURE_CLIENT_ID`.
+      `.env` is gitignored; `.env.example` is the only `.env*` allowed in git.
+   - Fill in `FOUNDRY_ENDPOINT` and `MODEL_DEPLOYMENT`; leave `AZURE_CLIENT_ID`
+      commented out for local runs.
    - Run via VS Code → **Run and Debug** → **"Run once (local, .env)"**
      (defined in [`.vscode/launch.json`](.vscode/launch.json)). The launch
      config sets `envFile` so the debugger and breakpoints get the variables
@@ -166,7 +167,7 @@ Three idiomatic options — pick whichever fits your loop:
    ```powershell
    $env:FOUNDRY_ENDPOINT = 'https://<account>.services.ai.azure.com/models'
    $env:MODEL_DEPLOYMENT = 'gpt-5.4'
-   $env:AZURE_CLIENT_ID  = '<user-assigned-mi-client-id>'
+   Remove-Item Env:\AZURE_CLIENT_ID -ErrorAction SilentlyContinue
    $env:MIN_TOKENS       = '1000'
    $env:MAX_TOKENS       = '2000'
    $env:MAX_JITTER_SECONDS = '0'
