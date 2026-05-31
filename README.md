@@ -311,36 +311,45 @@ union isfuzzy=true
   (AzureDiagnostics | where ResourceProvider == "MICROSOFT.COGNITIVESERVICES" | where Category in ("RequestResponse", "AzureOpenAIRequestUsage") | take 5)
 ```
 
-If `AOAIRequestResponseLogs` exists, this is the preferred export shape:
+Then run the export query:
 
 ```kusto
-AOAIRequestResponseLogs
-| where TimeGenerated >= ago(7d)
-| extend Props = todynamic(column_ifexists("properties_s", "{}")), RequestParameters = todynamic(Props.requestParameters), DeploymentFromColumn = tostring(column_ifexists("DeploymentName", ""))
-| extend DeploymentName = iff(isnotempty(DeploymentFromColumn), DeploymentFromColumn, iff(isnotempty(tostring(RequestParameters.deployment)), tostring(RequestParameters.deployment), tostring(RequestParameters.model)))
-| where DeploymentName == "gpt-5.4"
-| extend PromptTokens = toint(RequestParameters.input_token_count), CompletionTokens = toint(RequestParameters.output_token_count)
-| project TimeGenerated, DeploymentName, DurationMs = toint(column_ifexists("DurationMs", int(null))), PromptTokens, CompletionTokens, TotalTokens = PromptTokens + CompletionTokens
-| order by TimeGenerated asc
-```
+// Output-Weighted Azure OpenAI PTU Sizing Analysis
+// Run this query in Azure Monitor Log Analytics for accurate capacity planning
+// Model: gpt-5.4 | Output Weight: 4x (1 output token = 4 input tokens toward utilization)
 
-If your workspace only has `AzureDiagnostics`, use this fallback and adjust the
-column extraction after inspecting `properties_s`:
-
-```kusto
-AzureDiagnostics
-| where TimeGenerated >= ago(7d)
+let window = 1m;              // granularity for burst detection
+let p = 0.99;                 // percentile for burst sizing
+let outputWeight = 4;          // model-specific output token weight
+let throughputPerPTU = 2400;  // input TPM per PTU for gpt-5.4
+AzureMetrics
 | where ResourceProvider == "MICROSOFT.COGNITIVESERVICES"
-| where Category in ("RequestResponse", "AzureOpenAIRequestUsage")
-| extend Props = todynamic(properties_s), RequestParameters = todynamic(Props.requestParameters), Usage = todynamic(Props.usage)
-| extend DeploymentName = case(isnotempty(tostring(column_ifexists("ModelDeploymentName_s", ""))), tostring(column_ifexists("ModelDeploymentName_s", "")), isnotempty(tostring(column_ifexists("DeploymentName_s", ""))), tostring(column_ifexists("DeploymentName_s", "")), isnotempty(tostring(RequestParameters.deployment)), tostring(RequestParameters.deployment), tostring(RequestParameters.model))
-| where DeploymentName == "gpt-5.4"
-| extend PromptTokens = toint(case(isnotempty(tostring(RequestParameters.input_token_count)), tostring(RequestParameters.input_token_count), isnotempty(tostring(Usage.prompt_tokens)), tostring(Usage.prompt_tokens), tostring(column_ifexists("ProcessedPromptTokens_d", ""))))
-| extend CompletionTokens = toint(case(isnotempty(tostring(RequestParameters.output_token_count)), tostring(RequestParameters.output_token_count), isnotempty(tostring(Usage.completion_tokens)), tostring(Usage.completion_tokens), tostring(column_ifexists("GeneratedTokens_d", ""))))
-| extend DurationMs = toint(case(isnotempty(tostring(column_ifexists("DurationMs", ""))), tostring(column_ifexists("DurationMs", "")), isnotempty(tostring(column_ifexists("DurationMs_d", ""))), tostring(column_ifexists("DurationMs_d", "")), tostring(Props.durationMs)))
-| project TimeGenerated, DeploymentName, DurationMs, PromptTokens, CompletionTokens, TotalTokens = PromptTokens + CompletionTokens
-| order by TimeGenerated asc
+| where TimeGenerated >= ago(7d)
+| extend IsInput = MetricName == "ProcessedPromptTokens"
+| extend IsOutput = MetricName == "GeneratedCompletionTokens" or MetricName == "ProcessedCompletionTokens"
+| where IsInput or IsOutput
+| summarize
+    InputTokens = sumif(Total, IsInput),
+    OutputTokens = sumif(Total, IsOutput)
+    by bin(TimeGenerated, window)
+| extend NormalizedTPM = InputTokens + (outputWeight * OutputTokens)
+| summarize
+    AvgInputTPM = avg(InputTokens),
+    AvgOutputTPM = avg(OutputTokens),
+    AvgTPM = avg(NormalizedTPM),
+    P99TPM = percentile(NormalizedTPM, p),
+    MaxTPM = max(NormalizedTPM)
+| extend
+    AvgPTU = ceiling(AvgTPM / toreal(throughputPerPTU)),
+    P99PTU = ceiling(P99TPM / toreal(throughputPerPTU)),
+    MaxPTU = ceiling(MaxTPM / toreal(throughputPerPTU))
+| extend RecommendedPTU = max_of(AvgPTU, P99PTU)
+| project AvgInputTPM, AvgOutputTPM, AvgTPM, P99TPM, MaxTPM, AvgPTU, P99PTU, MaxPTU, RecommendedPTU
 ```
+
+Here is a sample result:
+
+![Log Analytics Workspace query and result](<img/2026-05-31 140918.png>)
 
 > **Note:** If the token expressions return nulls, run `take 1 | project *` and
 > inspect the dynamic payload. Microsoft documents the current monitoring model
@@ -351,6 +360,10 @@ AzureDiagnostics
 Export the query result to CSV from Log Analytics, upload it to
 [ptucalc.com](https://www.ptucalc.com/), choose the `gpt-5.4` model, and review
 the PTU recommendation.
+
+Sample CSV export:
+
+[LAW Share / Export to CSV example](docs/query_data.csv)
 
 Column mapping for ptucalc:
 
