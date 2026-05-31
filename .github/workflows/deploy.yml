@@ -21,7 +21,7 @@ on:
       azd_environment:
         description: azd environment name to deploy
         required: false
-        default: prod
+        default: tpu-est-dep
         type: string
 
 concurrency:
