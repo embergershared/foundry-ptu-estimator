@@ -1,4 +1,4 @@
-# Foundry TPU Estimation Traffic Generator
+# Foundry PTU Estimation Traffic Generator
 
 Generate sustained, realistic Azure AI Foundry traffic so the existing `gpt-5.4`
 deployment can be sized for PTU capacity with [ptucalc.com](https://www.ptucalc.com/).
